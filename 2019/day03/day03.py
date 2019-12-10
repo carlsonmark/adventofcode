@@ -1,5 +1,6 @@
 from collections import namedtuple
 import copy
+from typing import List, Tuple
 
 
 ExpectedResult = namedtuple('ExpectedResult', 'input output')
@@ -32,12 +33,31 @@ class LineSegment:
         elif direction == 'L':
             self.end_x -= length
         else:
-            assert(False, 'Unknown direction: ' + direction)
+            assert False, 'Unknown direction: ' + direction
         return
     def __repr__(self):
         s = '{},{} to {},{}'.format(self.start_x, self.start_y, self.end_x, self.end_y)
         return s
-
+    def min_x(self):
+        return min(self.start_x, self.end_x)
+    def max_x(self):
+        return max(self.start_x, self.end_x)
+    def min_y(self):
+        return min(self.start_y, self.end_y)
+    def max_y(self):
+        return max(self.start_y, self.end_y)
+    def point_in_segment(self, x, y):
+        if self.start_x == self.end_x and x == self.start_x:
+            # Vertical line
+            return self.min_y() <= y <= self.max_y()
+        if self.start_y == self.end_y and y == self.start_y:
+            # Horizontal line
+            return self.min_x() <= x <= self.max_x()
+        return False
+    def length(self):
+        return (self.max_x() - self.min_x()) + (self.max_y() - self.min_y())
+    def distance_to_crossing(self, x, y):
+        return abs(self.start_x - x) + abs(self.start_y - y)
 
 def linesFromInput(inp):
     lines = []
@@ -53,7 +73,7 @@ def linesFromInput(inp):
     return lines
 
 
-def findCrossing(segment1, segment2):
+def findCrossing(segment1:LineSegment, segment2:LineSegment):
     xdiff = (segment1.start_x - segment1.end_x, segment2.start_x - segment2.end_x)
     ydiff = (segment1.start_y - segment1.end_y, segment2.start_y - segment2.end_y)
 
@@ -71,7 +91,7 @@ def findCrossing(segment1, segment2):
     return crossing
 
 
-def findCrossing(segment1:LineSegment, segment2:LineSegment):
+def findCrossing(segment1:LineSegment, segment2:LineSegment) -> Tuple[float, float]:
     def line(seg:LineSegment):
         p1 = (seg.start_x, seg.start_y)
         p2 = (seg.end_x, seg.end_y)
@@ -87,10 +107,8 @@ def findCrossing(segment1:LineSegment, segment2:LineSegment):
         if D != 0:
             x = Dx / D
             y = Dy / D
-            print('{} and {} cross at {},{}?'.format(segment1, segment2, x, y))
             return x, y
         else:
-            print('{} and {} do not cross'.format(segment1, segment2))
             return False
 
     possible_intersection = intersection(line(segment1), line(segment2))
@@ -105,18 +123,14 @@ def findCrossing(segment1:LineSegment, segment2:LineSegment):
         lowY2 = min(segment2.start_y, segment2.end_y)
         highY2 = max(segment2.start_y, segment2.end_y)
         if x < lowX1 or x > highX1 or x < lowX2 or x > highX2:
-            print('x outside bounds')
             return False
         if y < lowY1 or y > highY1 or y < lowY2 or y > highY2:
-            print('y outside bounds')
             return False
         return x, y
     return False
 
 
 def findCrossings(line1, line2):
-    print('line1:', line1)
-    print('line2:', line2)
     crossings = []
     skip_first = True
     # Skip the first one at 0,0
@@ -132,7 +146,6 @@ def findCrossings(line1, line2):
 
 
 def distance(crossing):
-    print('crossing', crossing)
     dist = abs(crossing[0]) + abs(crossing[1])
     return dist
 
@@ -153,4 +166,50 @@ for inp, outp in testAList:
     assert ret == outp, '{} != {} for input={}'.format(ret, outp, inp)
 
 print('result A:', functionA(inputAList))
+
+testBList = [
+    ExpectedResult("""R8,U5,L5,D3
+U7,R6,D4,L4""", 30),
+    ExpectedResult("""R75,D30,R83,U83,L12,D49,R71,U7,L72
+U62,R66,U55,R34,D71,R55,D58,R83""", 610),
+    ExpectedResult("""R98,U47,R26,D63,R33,U87,L62,D20,R33,U53,R51
+U98,R91,D20,R16,D67,R40,U7,R15,U6,R7""", 410),
+]
+
+
+def len_to_crossing(line:List[LineSegment], crossing:Tuple[float,float]):
+    length = 0
+    for segment in line:
+        if segment.point_in_segment(*crossing):
+            dist = segment.distance_to_crossing(*crossing)
+            print(length, dist, 'crossed')
+            length += dist
+            break
+        else:
+            print(length, segment.length())
+            length += segment.length()
+    return length
+
+
+def functionB(inp:str):
+    inp1, inp2 = inp.splitlines()
+    line1 = linesFromInput(inp1)
+    line2 = linesFromInput(inp2)
+    crossings = findCrossings(line1, line2)
+    min_crossing_total = 1<<32
+    for crossing in crossings:
+        len_1 = len_to_crossing(line1, crossing)
+        len_2 = len_to_crossing(line2, crossing)
+        crossing_total = len_1 + len_2
+        print('lengths', len_1, len_2,'=', crossing_total)
+        if crossing_total < min_crossing_total:
+            min_crossing_total = crossing_total
+    return min_crossing_total
+
+
+for inp, outp in testBList:
+    ret = functionB(inp)
+    assert ret == outp, '{} != {} for input={}'.format(ret, outp, inp)
+
+print('result B:', functionB(inputAList))
 
