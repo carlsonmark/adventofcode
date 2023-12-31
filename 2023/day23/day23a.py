@@ -131,7 +131,7 @@ def solve(lines: str):
             opts = options(state)
             for option in opts:
                 option.step_count += 1
-                state.puzzle[option.position] = option.step_count
+                option.puzzle[option.position] = option.step_count
                 if option.position == end:
                     end_states.append(option)
                 else:
